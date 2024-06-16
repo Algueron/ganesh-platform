@@ -187,3 +187,15 @@ sudo systemctl daemon-reload
 ````bash
 sudo systemctl enable --now keycloak
 ````
+
+### Create Realm
+
+- On the Keycloak server, authenticate as admin
+````bash
+/opt/keycloak/bin/kcadm.sh config credentials --server https://keycloak.algueron.io --realm master --user $KEYCLOAK_ADMIN --password $KEYCLOAK_ADMIN_PASSWORD
+````
+
+- Create the Ganesh realm
+````bash
+/opt/keycloak/bin/kcadm.sh create realms -s realm=ganesh -s enabled=true
+````
