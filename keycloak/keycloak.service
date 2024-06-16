@@ -1,0 +1,14 @@
+[Unit]
+Description=Keycloak Application Server
+After=syslog.target network.target
+
+[Service]
+Type=simple
+KillSignal=SIGTERM
+KillMode=process
+SuccessExitStatus=143
+WorkingDirectory=/opt/keycloak/
+ExecStart=/opt/keycloak/bin/kc.sh --config-file=/etc/keycloak/keycloak.conf start --optimized
+
+[Install]
+WantedBy=multi-user.target
