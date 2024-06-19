@@ -199,3 +199,43 @@ sudo systemctl enable --now keycloak
 ````bash
 /opt/keycloak/bin/kcadm.sh create realms -s realm=ganesh -s enabled=true
 ````
+
+## Kubernetes services setup
+
+### Setup Project Contour
+
+Project Contour will be used as the Gateway API Provisioner.
+
+- Create the Gateway Provisioner
+````bash
+kubectl apply -f https://projectcontour.io/quickstart/contour-gateway-provisioner.yaml
+````
+
+- Create the GatewayClass
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/contour/contour-gateway-class.yaml
+````
+
+- Download certificate and key for the wildcard sub-domain
+
+- Download the Secret file manifest
+````bash
+wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/contour/contour-secret.yaml
+````
+
+- Fill the certificate and key data in the secret manifest
+````bash
+sed -i -e "s/GANESH_ENCODED_CERT/$(cat certificate.pem | base64 | tr --delete '\n')/g" contour-secret.yaml
+sed -i -e "s/GANESH_ENCODED_KEY/$(cat key.pem | base64 | tr --delete '\n')/g" contour-secret.yaml
+````
+
+- Create the TLS Secret
+````bash
+kubectl apply -f contour-secret.yaml
+````
+
+- Create the Gateway
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/contour/contour-gateway.yaml
+````
+

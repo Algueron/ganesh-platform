@@ -1,0 +1,20 @@
+kind: Gateway
+apiVersion: gateway.networking.k8s.io/v1
+metadata:
+  name: contour
+  namespace: projectcontour
+spec:
+  gatewayClassName: contour
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      allowedRoutes:
+        namespaces:
+          from: All
+      hostname: "*.ganesh.algueron.io"
+      tls:
+        certificateRefs:
+        - kind: Secret
+          group: ""
+          name: wildcard-ganesh-cert
