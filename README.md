@@ -188,7 +188,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now keycloak
 ````
 
-### Create Realm
+### Create Realm and Admin user
 
 - On the Keycloak server, authenticate as admin
 ````bash
@@ -198,6 +198,16 @@ sudo systemctl enable --now keycloak
 - Create the Ganesh realm
 ````bash
 /opt/keycloak/bin/kcadm.sh create realms -s realm=ganesh -s enabled=true
+````
+
+- Create your admin user
+````bash
+/opt/keycloak/bin/kcadm.sh create users -r ganesh -s username=algueron -s enabled=true
+````
+
+- Set your password
+````bash
+/opt/keycloak/bin/kcadm.sh set-password -r ganesh --username ganesh --new-password NEWPASSWORD
 ````
 
 ## Kubernetes services setup
@@ -239,3 +249,109 @@ kubectl apply -f contour-secret.yaml
 kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/contour/contour-gateway.yaml
 ````
 
+### Setup ArgoCD
+
+- Create ArgoCD namespace
+````bash
+kubectl create namespace argocd
+````
+
+- Install ArgoCD
+````bash
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+````
+
+- Create a HTTPRoute for ArgoCD
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/argocd/argocd-http-route.yaml
+````
+
+- Switch ArgoCD to insecure mode, as TLS termination is handled by the reverse proxy
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/argocd/argocd-patch.yaml
+````
+
+- Restart ArgoCD server for changes to be applied
+````bash
+kubectl delete pod -n argocd --selector=app.kubernetes.io/name=argocd-server
+````
+
+### Configure ArgoCD authentication
+
+- On the Keycloak server, authenticate as admin
+````bash
+/opt/keycloak/bin/kcadm.sh config credentials --server https://keycloak.algueron.io --realm master --user $KEYCLOAK_ADMIN --password $KEYCLOAK_ADMIN_PASSWORD
+````
+
+- Create the ArgoCD client
+````bash
+/opt/keycloak/bin/kcadm.sh create clients \
+    -r ganesh \
+    -s clientId=argocd \
+    -s name="ArgoCD Client" \
+    -s fullScopeAllowed=true \
+    -s standardFlowEnabled=true \
+    -s directAccessGrantsEnabled=true \
+    -s rootUrl="https://argocd.ganesh.algueron.io" \
+    -s baseUrl="/applications" \
+    -s 'redirectUris=["https://argocd.ganesh.algueron.io/auth/callback"]' \
+    -s 'webOrigins=["https://argocd.ganesh.algueron.io"]' \
+    -s adminUrl="https://argocd.ganesh.algueron.io" \
+    -s 'attributes={"post.logout.redirect.uris":"+"}'
+````
+
+- Retrieve the client secret generated
+````bash
+export KEYCLOAK_SECRET=$(/opt/keycloak/bin/kcadm.sh get clients -r ganesh --query clientId=argocd --fields secret --format csv --noquotes)
+````
+
+- Create a client scope using Keycloak web UI to allow ArgoCD to get group membership, name it "groups" and enable "Include in token scope"
+
+- In the "Mappers" tab, click on "Configure a new mapper" and choose Group Membership.
+
+- Make sure to set the Name as well as the Token Claim Name to "groups". Also disable the "Full group path".
+
+- Go back to the client we've created earlier and go to the Tab "Client Scopes". Click on "Add client scope", choose the groups scope and add it either to the Default Client Scope.
+
+- Create the ArgoCD Admin Group
+````bash
+/opt/keycloak/bin/kcadm.sh create groups -r ganesh -s name="ArgoCDAdmins"
+````
+
+- Add your admin user to the group
+
+- Edit the ArgoCD secret to include your keycloak secret
+````bash
+kubectl edit secret argocd-secret -n argocd
+````
+
+- Add the line in data with a key "oidc.keycloak.clientSecret" and your secret encoded in bae64
+
+- Edit the ArgoCD configuration to configure the keycloak instance
+````bash
+kubectl edit configmaps -n argocd argocd-cm
+````
+
+- Add the following lines in the file
+````yaml
+data:
+  url: https://argocd.ganesh.algueron.io
+  oidc.config: |
+    name: Keycloak
+    issuer: https://keycloak.algueron.io/realms/ganesh
+    clientID: argocd
+    clientSecret: $oidc.keycloak.clientSecret
+    requestedScopes: ["openid", "profile", "email", "groups"]
+````
+
+- Map the group ArgoCDAdmins created earlier to the role admin by editing the RBAC config map
+````bash
+kubectl edit configmaps -n argocd argocd-rbac-cm
+````
+
+- Add the following lines in the file
+````yaml
+data:
+  policy.csv: |
+    g, ArgoCDAdmins, role:admin
+````
