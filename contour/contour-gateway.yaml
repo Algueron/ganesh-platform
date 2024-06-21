@@ -6,15 +6,9 @@ metadata:
 spec:
   gatewayClassName: contour
   listeners:
-    - name: https
-      protocol: HTTPS
-      port: 443
+    - name: http
+      protocol: HTTP
+      port: 80
       allowedRoutes:
         namespaces:
           from: All
-      hostname: "*.ganesh.algueron.io"
-      tls:
-        certificateRefs:
-        - kind: Secret
-          group: ""
-          name: wildcard-ganesh-cert
