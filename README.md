@@ -363,3 +363,55 @@ helm install --namespace airbyte airbyte airbyte/airbyte
 ````bash
 kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/airbyte/airbyte-http-route.yaml
 ````
+
+### Setup Airflow
+
+- Add the Airflow Helm chart repository
+````bash
+helm repo add airflow https://airflow.apache.org
+````
+
+- Create Airflow namespace
+````bash
+kubectl create namespace airflow
+````
+
+- Download Airflow database creation script
+````bash
+sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/airflow/airflow-db-creation.sql
+````
+
+- Download Keycloak configuration file
+````bash
+sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/airflow/airflow-helm-values.yaml
+````
+
+- Generate a password for the database and fill the configuration files
+````bash
+export AIRFLOW_DB_PASSWORD=$(openssl rand -base64 18)
+sed -i -e "s/AIRFLOW_DB_PASSWORD/$AIRFLOW_DB_PASSWORD/g" airflow-db-creation.sql
+sed -i -e "s/AIRFLOW_DB_PASSWORD/$AIRFLOW_DB_PASSWORD/g" airflow-helm-values.yaml
+````
+
+- Create the Airflow database and user
+````bash
+sudo su -c "psql -f airflow-db-creation.sql" postgres
+````
+
+- Fill the PostgreSQL host in the Helm values file
+````bash
+export AIRFLOW_DB_HOST=xxx.xxx.xxx.xxx  # Replace with your IP
+sed -i -e "s/AIRFLOW_DB_HOST/$AIRFLOW_DB_HOST/g" airflow-helm-values.yaml
+````
+
+- Deploy airflow
+````bash
+helm install airflow airflow/airflow --namespace airflow --values airflow-helm-values.yaml
+````
+
+- Create a HTTPRoute for Airflow Web Server
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/airflow/airflow-http-route.yaml
+````
+
+- Connect and change the admin password to something secure
