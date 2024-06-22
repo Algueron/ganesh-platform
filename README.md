@@ -359,6 +359,32 @@ helm install --namespace airbyte airbyte airbyte/airbyte
 
 ### Configure Airbyte reverse proxy
 
+- Add the OAuth2 Proxy Helm chart repository to Helm
+````bash
+helm repo add oauth2-proxy https://oauth2-proxy.github.io/manifests
+````
+
+- Create the Airbyte client
+````bash
+/opt/keycloak/bin/kcadm.sh create clients \
+    -r ganesh \
+    -s clientId=airbyte \
+    -s name="Airbyte Client" \
+    -s fullScopeAllowed=true \
+    -s standardFlowEnabled=true \
+    -s directAccessGrantsEnabled=false \
+    -s 'redirectUris=["https://airbyte.ganesh.algueron.io/oauth2/callback"]'
+````
+
+- TODO : Add Mapper
+
+- TODO : Fill secrets in Helm values for OAuth2
+
+- Install OAuth2 Proxy
+````bash
+helm install --namespace airbyte oauth2 oauth2-proxy/oauth2-proxy -f oauth2-proxy-helm-values.yaml
+````
+
 - Create a HTTPRoute for Airbyte WebApp
 ````bash
 kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/airbyte/airbyte-http-route.yaml
