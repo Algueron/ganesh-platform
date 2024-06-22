@@ -285,3 +285,55 @@ wget https://github.com/argoproj/argo-cd/releases/download/v2.7.2/argocd-windows
 ````bash
 argocd admin initial-password -n argocd
 ````
+
+### Setup Rook
+
+- Install the Rook Operator
+````bash
+export ROOK_VERSION=1.14
+kubectl apply -f https://raw.githubusercontent.com/rook/rook/release-$ROOK_VERSION/deploy/examples/crds.yaml
+kubectl apply -f https://raw.githubusercontent.com/rook/rook/release-$ROOK_VERSION/deploy/examples/common.yaml
+kubectl apply -f https://raw.githubusercontent.com/rook/rook/release-$ROOK_VERSION/deploy/examples/operator.yaml
+````
+
+- Create the Rook cluster
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-cluster.yaml
+````
+
+- Create the Block Storage
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-block-replicapool.yaml
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/03-block-storage-class.yaml
+````
+
+- Create the CephFS Storage
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-cephfs-filesystem.yaml
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-cephfs-storage-class.yaml
+````
+
+- Create the Object Store
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-ceph-object-store.yaml
+````
+
+- Create a HTTPRoute for Ceph Dashboard
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-dashboard-http-route.yaml
+````
+
+- Create a HTTPRoute for Ceph Object Store
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-object-store-http-route.yaml
+````
+
+- Retrieve the admin password
+````bash
+kubectl -n rook-ceph get secret rook-ceph-dashboard-password -o jsonpath="{['data']['password']}" | base64 --decode && echo
+````
+
+- Set Rook Block storage as the default StorageClass
+````bash
+kubectl patch storageclass rook-ceph-block -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+````

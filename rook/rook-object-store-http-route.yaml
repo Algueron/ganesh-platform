@@ -1,0 +1,20 @@
+kind: HTTPRoute
+apiVersion: gateway.networking.k8s.io/v1
+metadata:
+  name: rook-ceph-object-store
+  namespace: rook-ceph
+  labels:
+    app: rook
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: contour
+    namespace: projectcontour
+  hostnames:
+  - "s3a.ganesh.algueron.io"
+  rules:
+  - backendRefs:
+    - kind: Service
+      name: rook-ceph-rgw-ceph-object-store
+      port: 80
