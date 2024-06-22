@@ -276,82 +276,12 @@ kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main
 kubectl delete pod -n argocd --selector=app.kubernetes.io/name=argocd-server
 ````
 
-### Configure ArgoCD authentication
-
-- On the Keycloak server, authenticate as admin
+- Download ArgoCD client and move it in your PATH as argocd.exe
 ````bash
-/opt/keycloak/bin/kcadm.sh config credentials --server https://keycloak.algueron.io --realm master --user $KEYCLOAK_ADMIN --password $KEYCLOAK_ADMIN_PASSWORD
+wget https://github.com/argoproj/argo-cd/releases/download/v2.7.2/argocd-windows-amd64.exe
 ````
 
-- Create the ArgoCD client
+- Retrieve the admin password
 ````bash
-/opt/keycloak/bin/kcadm.sh create clients \
-    -r ganesh \
-    -s clientId=argocd \
-    -s name="ArgoCD Client" \
-    -s fullScopeAllowed=true \
-    -s standardFlowEnabled=true \
-    -s directAccessGrantsEnabled=true \
-    -s rootUrl="https://argocd.ganesh.algueron.io" \
-    -s baseUrl="/applications" \
-    -s 'redirectUris=["https://argocd.ganesh.algueron.io/auth/callback"]' \
-    -s 'webOrigins=["https://argocd.ganesh.algueron.io"]' \
-    -s adminUrl="https://argocd.ganesh.algueron.io" \
-    -s 'attributes={"post.logout.redirect.uris":"+"}'
-````
-
-- Retrieve the client secret generated
-````bash
-export KEYCLOAK_SECRET=$(/opt/keycloak/bin/kcadm.sh get clients -r ganesh --query clientId=argocd --fields secret --format csv --noquotes)
-````
-
-- Create a client scope using Keycloak web UI to allow ArgoCD to get group membership, name it "groups" and enable "Include in token scope"
-
-- In the "Mappers" tab, click on "Configure a new mapper" and choose Group Membership.
-
-- Make sure to set the Name as well as the Token Claim Name to "groups". Also disable the "Full group path".
-
-- Go back to the client we've created earlier and go to the Tab "Client Scopes". Click on "Add client scope", choose the groups scope and add it either to the Default Client Scope.
-
-- Create the ArgoCD Admin Group
-````bash
-/opt/keycloak/bin/kcadm.sh create groups -r ganesh -s name="ArgoCDAdmins"
-````
-
-- Add your admin user to the group
-
-- Edit the ArgoCD secret to include your keycloak secret
-````bash
-kubectl edit secret argocd-secret -n argocd
-````
-
-- Add the line in data with a key "oidc.keycloak.clientSecret" and your secret encoded in bae64
-
-- Edit the ArgoCD configuration to configure the keycloak instance
-````bash
-kubectl edit configmaps -n argocd argocd-cm
-````
-
-- Add the following lines in the file
-````yaml
-data:
-  url: https://argocd.ganesh.algueron.io
-  oidc.config: |
-    name: Keycloak
-    issuer: https://keycloak.algueron.io/realms/ganesh
-    clientID: argocd
-    clientSecret: $oidc.keycloak.clientSecret
-    requestedScopes: ["openid", "profile", "email", "groups"]
-````
-
-- Map the group ArgoCDAdmins created earlier to the role admin by editing the RBAC config map
-````bash
-kubectl edit configmaps -n argocd argocd-rbac-cm
-````
-
-- Add the following lines in the file
-````yaml
-data:
-  policy.csv: |
-    g, ArgoCDAdmins, role:admin
+argocd admin initial-password -n argocd
 ````
