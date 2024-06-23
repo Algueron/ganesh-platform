@@ -415,3 +415,82 @@ kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main
 ````
 
 - Connect and change the admin password to something secure
+
+### Setup DataHub
+
+- Create DataHub namespace
+````bash
+kubectl create namespace datahub
+````
+
+- Add the DataHub Helm chart repository
+````bash
+helm repo add datahub https://helm.datahubproject.io/
+````
+
+- Generate a password for the database and fill the secret file
+````bash
+export DATAHUB_MYSQL_PASSWORD=$(openssl rand -base64 18 | base64)
+sed -i -e "s/DATAHUB_MYSQL_PASSWORD/$DATAHUB_MYSQL_PASSWORD/g" mysql-password-secret.yaml
+````
+
+- Install DataHub Prerequisites (Kafka and Elasticsearch)
+````bash
+helm install prerequisites datahub/datahub-prerequisites --namespace datahub --values https://raw.githubusercontent.com/Algueron/ganesh-platform/main/datahub/datahub-prerequisites-helm-values.yaml
+````
+
+TODO : DB, config
+
+- Download DataHub database creation script
+````bash
+sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/datahub/datahub-db-creation.sql
+````
+
+- Download DataHub Helm values file
+````bash
+sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/datahub/datahub-helm-values.yaml
+````
+
+- Generate a password for the database and fill the configuration files
+````bash
+export DATAHUB_DB_PASSWORD=$(openssl rand -base64 18)
+sed -i -e "s/DATAHUB_DB_PASSWORD/$DATAHUB_DB_PASSWORD/g" datahub-db-creation.sql
+sed -i -e "s/DATAHUB_DB_PASSWORD/$DATAHUB_DB_PASSWORD/g" datahub-helm-values.yaml
+````
+
+- Create the Airflow database and user
+````bash
+sudo su -c "psql -f datahub-db-creation.sql" postgres
+````
+
+- Fill the PostgreSQL host in the Helm values file
+````bash
+export DATAHUB_DB_HOST=xxx.xxx.xxx.xxx  # Replace with your IP
+sed -i -e "s/DATAHUB_DB_HOST/$DATAHUB_DB_HOST/g" datahub-helm-values.yaml
+````
+
+- Download the user props file
+````bash
+sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/datahub/user.props
+````
+
+- Generate an admin password
+````bash
+export DATAHUB_ADMIN_PASSWORD=$(openssl rand -base64 18)
+sed -i -e "s/DATAHUB_ADMIN_PASSWORD/$DATAHUB_ADMIN_PASSWORD/g" user.props
+````
+
+- Deploy DataHub
+````bash
+helm install datahub datahub/datahub --namespace datahub --values datahub-helm-values.yaml --timeout 20m
+````
+
+- Change Frontend Service to ClusterIP
+````bash
+kubectl patch svc -n datahub datahub-datahub-frontend --type='json' -p '[{"op":"replace","path":"/spec/type","value":"ClusterIP"}]'
+````
+
+- Create a HTTPRoute for DataHub frontend
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/datahub/datahub-http-route.yaml
+````
