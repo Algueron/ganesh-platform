@@ -439,8 +439,6 @@ sed -i -e "s/DATAHUB_MYSQL_PASSWORD/$DATAHUB_MYSQL_PASSWORD/g" mysql-password-se
 helm install prerequisites datahub/datahub-prerequisites --namespace datahub --values https://raw.githubusercontent.com/Algueron/ganesh-platform/main/datahub/datahub-prerequisites-helm-values.yaml
 ````
 
-TODO : DB, config
-
 - Download DataHub database creation script
 ````bash
 sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/datahub/datahub-db-creation.sql
@@ -469,7 +467,7 @@ export DATAHUB_DB_HOST=xxx.xxx.xxx.xxx  # Replace with your IP
 sed -i -e "s/DATAHUB_DB_HOST/$DATAHUB_DB_HOST/g" datahub-helm-values.yaml
 ````
 
-- Download the user props file
+- Download the users file
 ````bash
 sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/datahub/user.props
 ````
@@ -478,6 +476,11 @@ sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/datahu
 ````bash
 export DATAHUB_ADMIN_PASSWORD=$(openssl rand -base64 18)
 sed -i -e "s/DATAHUB_ADMIN_PASSWORD/$DATAHUB_ADMIN_PASSWORD/g" user.props
+````
+
+- Create a secret to store the users file
+````bash
+kubectl create secret generic datahub-users-secret -n datahub --from-file=user.props=./user.props
 ````
 
 - Deploy DataHub
