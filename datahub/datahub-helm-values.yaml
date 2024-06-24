@@ -297,8 +297,8 @@ datahubUpgrade:
       # to run
       command:
       args: []
-    sqlDbType: "MYSQL"
-    # sqlDbType: "POSTGRES"
+    #sqlDbType: "MYSQL"
+    sqlDbType: "POSTGRES"
   podSecurityContext: {}
     # fsGroup: 1000
   securityContext: {}
