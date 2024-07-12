@@ -428,12 +428,6 @@ kubectl create namespace datahub
 helm repo add datahub https://helm.datahubproject.io/
 ````
 
-- Generate a password for the database and fill the secret file
-````bash
-export DATAHUB_MYSQL_PASSWORD=$(openssl rand -base64 18 | base64)
-sed -i -e "s/DATAHUB_MYSQL_PASSWORD/$DATAHUB_MYSQL_PASSWORD/g" mysql-password-secret.yaml
-````
-
 - Install DataHub Prerequisites (Kafka and Elasticsearch)
 ````bash
 helm install prerequisites datahub/datahub-prerequisites --namespace datahub --values https://raw.githubusercontent.com/Algueron/ganesh-platform/main/datahub/datahub-prerequisites-helm-values.yaml
@@ -456,7 +450,7 @@ sed -i -e "s/DATAHUB_DB_PASSWORD/$DATAHUB_DB_PASSWORD/g" datahub-db-creation.sql
 sed -i -e "s/DATAHUB_DB_PASSWORD/$DATAHUB_DB_PASSWORD/g" datahub-helm-values.yaml
 ````
 
-- Create the Airflow database and user
+- Create the DataHub database and user
 ````bash
 sudo su -c "psql -f datahub-db-creation.sql" postgres
 ````
@@ -486,11 +480,6 @@ kubectl create secret generic datahub-users-secret -n datahub --from-file=user.p
 - Deploy DataHub
 ````bash
 helm install datahub datahub/datahub --namespace datahub --values datahub-helm-values.yaml --timeout 20m
-````
-
-- Change Frontend Service to ClusterIP
-````bash
-kubectl patch svc -n datahub datahub-datahub-frontend --type='json' -p '[{"op":"replace","path":"/spec/type","value":"ClusterIP"}]'
 ````
 
 - Create a HTTPRoute for DataHub frontend
