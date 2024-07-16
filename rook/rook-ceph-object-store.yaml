@@ -4,19 +4,45 @@ metadata:
   name: ceph-object-store
   namespace: rook-ceph
 spec:
+  # The pool spec used to create the metadata pools. Must use replication.
   metadataPool:
     failureDomain: host
     replicated:
       size: 3
+      # Disallow setting pool with replica 1, this could lead to data loss without recovery.
+      # Make sure you're *ABSOLUTELY CERTAIN* that is what you want
+      requireSafeReplicaSize: true
+    parameters:
+      # Inline compression mode for the data pool
+      # Further reference: https://docs.ceph.com/docs/master/rados/configuration/bluestore-config-ref/#inline-compression
+      compression_mode: none
+      # gives a hint (%) to Ceph in terms of expected consumption of the total cluster capacity of a given pool
+      # for more info: https://docs.ceph.com/docs/master/rados/operations/placement-groups/#specifying-expected-pool-size
+      #target_size_ratio: ".5"
+  
+  # The pool spec used to create the data pool. Can use replication or erasure coding.
   dataPool:
     failureDomain: host
     # For production it is recommended to use more chunks, such as 4+2 or 8+4
-    erasureCoded:
-      dataChunks: 2
-      codingChunks: 1
+    replicated:
+      size: 3
+      # Disallow setting pool with replica 1, this could lead to data loss without recovery.
+      # Make sure you're *ABSOLUTELY CERTAIN* that is what you want
+      requireSafeReplicaSize: true
+      
+  # Whether to preserve metadata and data pools on object store deletion
   preservePoolsOnDelete: true
   gateway:
-    sslCertificateRef:
+    # A reference to the secret in the rook namespace where the ssl certificate is stored
+    # sslCertificateRef:
+    # The port that RGW pods will listen on (http)
     port: 80
+    # The port that RGW pods will listen on (https). An ssl certificate is required.
     # securePort: 443
+    # The number of pods in the rgw deployment
     instances: 1
+
+  # If a CephObjectStoreUser is created in a namespace other than the Rook cluster namespace,
+  # the namespace must be added to the list of allowed namespaces, or specify "*" to allow all namespaces.
+  allowUsersInNamespaces: 
+    - "*"
