@@ -304,7 +304,7 @@ kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main
 - Create the Block Storage
 ````bash
 kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-block-replicapool.yaml
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/03-block-storage-class.yaml
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-block-storage-class.yaml
 ````
 
 - Create the CephFS Storage
