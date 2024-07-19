@@ -17,4 +17,4 @@ spec:
   - backendRefs:
     - kind: Service
       name: rook-ceph-mgr-dashboard
-      port: 8080
+      port: 7000

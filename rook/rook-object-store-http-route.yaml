@@ -16,5 +16,5 @@ spec:
   rules:
   - backendRefs:
     - kind: Service
-      name: rook-ceph-rgw-ceph-object-store
+      name: rook-ceph-rgw-ceph-objectstore
       port: 80

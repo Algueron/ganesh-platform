@@ -288,34 +288,19 @@ argocd admin initial-password -n argocd
 
 ### Setup Rook
 
+- Add the Rook Helm chart repository
+````bash
+helm repo add rook-release https://charts.rook.io/release
+````
+
 - Install the Rook Operator
 ````bash
-export ROOK_VERSION=1.14
-kubectl apply -f https://raw.githubusercontent.com/rook/rook/release-$ROOK_VERSION/deploy/examples/crds.yaml
-kubectl apply -f https://raw.githubusercontent.com/rook/rook/release-$ROOK_VERSION/deploy/examples/common.yaml
-kubectl apply -f https://raw.githubusercontent.com/rook/rook/release-$ROOK_VERSION/deploy/examples/operator.yaml
+helm install --create-namespace --namespace rook-ceph rook-ceph rook-release/rook-ceph -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-ceph-operator-values.yaml
 ````
 
-- Create the Rook cluster
+- Install the Rook cluster
 ````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-cluster.yaml
-````
-
-- Create the Block Storage
-````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-block-replicapool.yaml
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-block-storage-class.yaml
-````
-
-- Create the CephFS Storage
-````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-cephfs-filesystem.yaml
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-cephfs-storage-class.yaml
-````
-
-- Create the Object Store
-````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-ceph-object-store.yaml
+helm install --create-namespace --namespace rook-ceph rook-ceph-cluster --set operatorNamespace=rook-ceph rook-release/rook-ceph-cluster -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-ceph-cluster-values.yaml
 ````
 
 - Create a HTTPRoute for Ceph Dashboard
