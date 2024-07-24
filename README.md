@@ -366,7 +366,7 @@ kubectl create namespace airflow
 sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/airflow/airflow-db-creation.sql
 ````
 
-- Download Keycloak configuration file
+- Download Airflow Helm values file
 ````bash
 sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/airflow/airflow-helm-values.yaml
 ````
@@ -387,6 +387,16 @@ sudo su -c "psql -f airflow-db-creation.sql" postgres
 ````bash
 export AIRFLOW_DB_HOST=xxx.xxx.xxx.xxx  # Replace with your IP
 sed -i -e "s/AIRFLOW_DB_HOST/$AIRFLOW_DB_HOST/g" airflow-helm-values.yaml
+````
+
+- Create a Persistent Volume Claim for storing DAGs
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/airflow/airflow-dag-volume-claim.yaml
+````
+
+- Create a Persistent Volume Claim for storing logs
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/airflow/airflow-log-volume-claim.yaml
 ````
 
 - Deploy airflow
