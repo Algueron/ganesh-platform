@@ -221,6 +221,11 @@ Project Contour will be used as the Gateway API Provisioner.
 kubectl apply -f https://projectcontour.io/quickstart/contour-gateway-provisioner.yaml
 ````
 
+- Create the Contour configuration
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/contour/contour-deployment-config.yaml
+````
+
 - Create the GatewayClass
 ````bash
 kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/contour/contour-gateway-class.yaml
