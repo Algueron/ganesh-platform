@@ -74,7 +74,7 @@ sudo systemctl restart postgresql
 
 ### Setup Keycloak
 
-Keycloak will be used as the Identity Provider. It is currently installed on the same server than PostgreSQL.
+Keycloak will be used as the Identity Provider. It should be installed on a dedicated server.
 
 - Install system utilities
 ````bash
@@ -93,7 +93,7 @@ sudo adduser keycloak
 
 - Download Keycloak
 ````bash
-sudo wget -O /opt/keycloak.zip https://github.com/keycloak/keycloak/releases/download/25.0.0/keycloak-25.0.0.zip
+sudo wget -O /opt/keycloak.zip https://github.com/keycloak/keycloak/releases/download/26.2.2/keycloak-26.2.2.zip
 ````
 
 - Extract Keycloak archive
@@ -103,7 +103,7 @@ sudo unzip /opt/keycloak.zip -d /opt/
 
 - Rename directory
 ````bash
-sudo mv /opt/keycloak-25.0.0 /opt/keycloak
+sudo mv /opt/keycloak-26.2.2 /opt/keycloak
 ````
 
 - Set ownership to Keycloak service account
@@ -202,7 +202,7 @@ sudo systemctl enable --now keycloak
 
 - Create your admin user
 ````bash
-/opt/keycloak/bin/kcadm.sh create users -r ganesh -s username=algueron -s enabled=true
+/opt/keycloak/bin/kcadm.sh create users -r ganesh -s username=ganesh -s enabled=true
 ````
 
 - Set your password
