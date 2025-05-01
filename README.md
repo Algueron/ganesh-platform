@@ -415,3 +415,20 @@ kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main
 ````
 
 - Connect and change the admin password to something secure
+
+### Setup Windmill
+
+- Add the Airflow Helm chart repository
+````bash
+helm repo add windmill https://windmill-labs.github.io/windmill-helm-charts/
+````
+
+- Deploy airflow
+````bash
+helm install windmill-chart windmill/windmill --namespace=windmill --create-namespace
+````
+
+- Create a HTTPRoute for Windmill App Server
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/windmill/windmill-http-route.yaml
+````
