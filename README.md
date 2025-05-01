@@ -54,14 +54,14 @@ sudo apt install -y postgresql
 
 - Edit PostgreSQL configuration (set listen_addresses = '*')
 ````bash
-cat <<EOF  | sudo tee -a /etc/postgresql/16/main/postgresql.conf
+cat <<EOF  | sudo tee -a /etc/postgresql/17/main/postgresql.conf
 listen_addresses = '*'
 EOF
 ````
 
 - Edit PostgreSQL authentication file (temporarily allow all)
 ````bash
-cat <<EOF  | sudo tee -a /etc/postgresql/16/main/pg_hba.conf
+cat <<EOF  | sudo tee -a /etc/postgresql/17/main/pg_hba.conf
 # Allow Kerberos authentication
 host    all     all     0.0.0.0/0   md5
 EOF
