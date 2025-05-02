@@ -330,6 +330,98 @@ kubectl patch storageclass rook-ceph-block -p '{"metadata": {"annotations":{"sto
 
 ## Ganesh services setup
 
+### Setup Hive Metastore
+
+- Create Hive namespace
+````bash
+kubectl create namespace hive
+````
+
+- Fill the necessary variables for PostgreSQL connection
+````bash
+export POSTGRESQL_IP=192.168.0.xxx
+export HIVE_POSTGRESQL_DB=hive_db
+export HIVE_POSTGRESQL_USER=hive
+export HIVE_POSTGRESQL_PASSWORD=$(openssl rand -base64 18)
+````
+
+- Download Hive database creation script
+````bash
+sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/hive/hive-db-creation.sql
+````
+
+- Fill the database creation script
+````bash
+sed -i -e "s/HIVE_POSTGRESQL_DB/$HIVE_POSTGRESQL_DB/g" hive-db-creation.sql
+sed -i -e "s/HIVE_POSTGRESQL_USER/$HIVE_POSTGRESQL_USER/g" hive-db-creation.sql
+sed -i -e "s/HIVE_POSTGRESQL_PASSWORD/$HIVE_POSTGRESQL_PASSWORD/g" hive-db-creation.sql
+````
+
+- Create the Hive database and user
+````bash
+sudo su -c "psql -f hive-db-creation.sql" postgres
+````
+
+- Download Hive secret for PostgreSQL
+````bash
+sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/hive/hive-metastore-secret.yaml
+````
+
+- Generate Hive service options
+````bash
+export HIVE_METASTORE_SECRET=$(echo "-Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://$POSTGRESQL_IP:5432/$HIVE_POSTGRESQL_DB -Djavax.jdo.option.ConnectionUserName=$HIVE_POSTGRESQL_USER -Djavax.jdo.option.ConnectionPassword=$HIVE_POSTGRESQL_PASSWORD" | base64 --wrap=0)
+````
+
+- Fill Hive secret manifest
+````bash
+sed -i -e "s/HIVE_METASTORE_SECRET/$HIVE_METASTORE_SECRET/g" hive-metastore-secret.yaml
+````
+
+- Create Hive metastore secret for PostgreSQL
+````bash
+kubectl apply -f hive-metastore-secret.yaml
+````
+
+- Create S3 user for Hive Metastore
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/hive/hive-metastore-s3-user.yaml
+````
+
+- Download Hive Metastore S3 configuration manifest
+````bash
+sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/hive/hive-metastore-s3-config.yaml
+````
+
+- Fill Rook Access Key ID
+````bash
+sed -i "s/ROOK_KEY_ID/`kubectl get secret rook-ceph-object-user-ceph-objectstore-hive-metastore -n rook-ceph -o jsonpath='{.data.AccessKey}' | base64 --decode`/" hive-metastore-s3-config.yaml
+````
+
+- Fill Rook Secret Key
+````bash
+sed -i "s/ROOK_SECRET_KEY/`kubectl get secret rook-ceph-object-user-ceph-objectstore-hive-metastore -n rook-ceph -o jsonpath='{.data.SecretKey}' | base64 --decode`/" hive-metastore-s3-config.yaml
+````
+
+- Create Hive Metastore secret for Rook
+````bash
+kubectl apply -f hive-metastore-s3-config.yaml
+````
+
+- Deploy Hive Metastore
+````bash
+kubectl apply -f hive-metastore-deployment.yaml
+````
+
+- Deploy Hive Service
+````bash
+kubectl apply -f hive-metastore-service.yaml
+````
+
+- Create a HTTPRoute for Airbyte WebApp
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/airbyte/airbyte-http-route.yaml
+````
+
 ### Setup Airbyte
 
 - Create Airbyte namespace
