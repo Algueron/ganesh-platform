@@ -13,7 +13,7 @@ data:
       </property>
       <property>
         <name>fs.s3a.endpoint</name>
-        <value>rook-ceph-rgw-ceph-object-store.rook-ceph.svc.cluster.local</value>
+        <value>rook-ceph-rgw-ceph-objectstore.rook-ceph.svc.cluster.local</value>
       </property>
       <property>
         <name>fs.s3a.access.key</name>
