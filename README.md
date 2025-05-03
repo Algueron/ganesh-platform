@@ -389,7 +389,7 @@ kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main
 
 - Download Hive Metastore S3 configuration manifest
 ````bash
-sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/hive/hive-metastore-s3-config.yaml
+wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/hive/hive-metastore-s3-config.yaml
 ````
 
 - Fill Rook Access Key ID
@@ -417,9 +417,41 @@ kubectl apply -f hive-metastore-deployment.yaml
 kubectl apply -f hive-metastore-service.yaml
 ````
 
-- Create a HTTPRoute for Airbyte WebApp
+### Setup Trino
+
+- Create Trino namespace
 ````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/airbyte/airbyte-http-route.yaml
+kubectl create namespace trino
+````
+
+- Add the Trino Helm chart repository to Helm
+````bash
+helm repo add trino https://trinodb.github.io/charts
+````
+
+- Download Trino configuration manifest for S3
+````bash
+wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/trino/trino-configuration.yaml
+````
+
+- Fill Rook Access Key ID
+````bash
+sed -i "s/ROOK_KEY_ID/`kubectl get secret rook-ceph-object-user-ceph-objectstore-hive-metastore -n rook-ceph -o jsonpath='{.data.AccessKey}' | base64 --decode`/" trino-configuration.yaml
+````
+
+- Fill Rook Secret Key
+````bash
+sed -i "s/ROOK_SECRET_KEY/`kubectl get secret rook-ceph-object-user-ceph-objectstore-hive-metastore -n rook-ceph -o jsonpath='{.data.SecretKey}' | base64 --decode`/" trino-configuration.yaml
+````
+
+- Create the Trino cluster
+````bash
+helm install -f trino-configuration.yaml --namespace trino ganesh-trino-cluster trino/trino
+````
+
+- Create a HTTPRoute for Trino Cluster UI
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/trino/trino-http-route.yaml
 ````
 
 ### Setup Airbyte
