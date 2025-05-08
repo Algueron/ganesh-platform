@@ -328,6 +328,47 @@ kubectl -n rook-ceph get secret rook-ceph-dashboard-password -o jsonpath="{['dat
 kubectl patch storageclass rook-ceph-block -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 ````
 
+### Setup MinIO
+
+- Add the MinIO Operator Helm chart repository
+````bash
+helm repo add minio-operator https://operator.min.io
+````
+
+- Install the MinIO Operator
+````bash
+helm install --namespace minio-operator --create-namespace operator minio-operator/operator
+````
+
+- Create the Tenant namespace
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-namespace.yaml
+````
+
+- TODO: customize credentials for storage configuration
+
+- Create the Tenant storage configuration
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-storage-configuration.yaml
+````
+
+- TODO: customize credentials for storage user
+
+- Create the Tenant storage user
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-storage-user.yaml
+````
+
+- Create the tenant
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant.yaml
+````
+
+- Create a HTTPRoute for MinIO console
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-console-http-route.yaml
+````
+
 ## Ganesh services setup
 
 ### Setup Hive Metastore

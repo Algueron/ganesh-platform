@@ -1,0 +1,18 @@
+kind: HTTPRoute
+apiVersion: gateway.networking.k8s.io/v1
+metadata:
+  name: minio-console
+  namespace: minio-tenant
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: contour
+    namespace: projectcontour
+  hostnames:
+  - "minio.ganesh.algueron.io"
+  rules:
+  - backendRefs:
+    - kind: Service
+      name: myminio-console
+      port: 9090
