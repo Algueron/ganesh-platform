@@ -313,11 +313,6 @@ helm install --create-namespace --namespace rook-ceph rook-ceph-cluster --set op
 kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-dashboard-http-route.yaml
 ````
 
-- Create a HTTPRoute for Ceph Object Store
-````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-object-store-http-route.yaml
-````
-
 - Retrieve the admin password
 ````bash
 kubectl -n rook-ceph get secret rook-ceph-dashboard-password -o jsonpath="{['data']['password']}" | base64 --decode && echo
@@ -337,7 +332,7 @@ helm repo add minio-operator https://operator.min.io
 
 - Install the MinIO Operator
 ````bash
-helm install --namespace minio-operator --create-namespace operator minio-operator/operator
+helm install --namespace minio-operator --create-namespace minio-operator minio-operator/operator
 ````
 
 - Create the Tenant namespace
@@ -345,18 +340,48 @@ helm install --namespace minio-operator --create-namespace operator minio-operat
 kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-namespace.yaml
 ````
 
-- TODO: customize credentials for storage configuration
+- Download the Secret file manifest
+````bash
+wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-storage-configuration.yaml
+````
+
+- Generate Root access and secret keys
+````bash
+export ROOT_ACCESS_KEY=$(openssl rand -base64 -hex 18)
+export ROOT_SECRET_KEY=$(openssl rand -base64 -hex 24)
+````
+
+- Fill the Tenant storage configuration manifest
+````bash
+sed -i -e "s/ROOT_ACCESS_KEY/$ROOT_ACCESS_KEY/g" minio-tenant-storage-configuration.yaml
+sed -i -e "s/ROOT_SECRET_KEY/$ROOT_SECRET_KEY/g" minio-tenant-storage-configuration.yaml
+````
 
 - Create the Tenant storage configuration
 ````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-storage-configuration.yaml
+kubectl apply -f minio-tenant-storage-configuration.yaml
 ````
 
-- TODO: customize credentials for storage user
+- Download the MinIO admin user manifest
+````bash
+wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-storage-user.yaml
+````
+
+- Generate admin access and secret keys
+````bash
+export MINIO_ADMIN_LOGIN=admin
+export MINIO_ADMIN_PASSWORD=$(openssl rand -base64 -hex 24)
+````
+
+- Fill the MinIO admin configuration manifest
+````bash
+sed -i -e "s/MINIO_ADMIN_LOGIN/$(echo -n $MINIO_ADMIN_LOGIN | base64 | tr --delete '\n')/g" minio-tenant-storage-user.yaml
+sed -i -e "s/MINIO_ADMIN_PASSWORD/$(echo -n $MINIO_ADMIN_PASSWORD | base64 | tr --delete '\n')/g" minio-tenant-storage-user.yaml
+````
 
 - Create the Tenant storage user
 ````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-storage-user.yaml
+kubectl apply -f minio-tenant-storage-user.yaml
 ````
 
 - Create the tenant
@@ -367,6 +392,28 @@ kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main
 - Create a HTTPRoute for MinIO console
 ````bash
 kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-console-http-route.yaml
+````
+
+- Create a HTTPRoute for MinIO S3 endpoint
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-s3-http-route.yaml
+````
+
+### MinIO Health check
+
+- Download MinIO client
+````bash
+wget https://dl.min.io/client/mc/release/windows-amd64/mc.exe
+````
+
+- Create an alias for the S3 service
+````bash
+mc alias set ganesh https://s3.ganesh.algueron.io $MINIO_ADMIN_LOGIN $MINIO_ADMIN_PASSWORD
+````
+
+- Test the connection to the S3 service
+````bash
+mc admin info ganesh
 ````
 
 ## Ganesh services setup
@@ -590,7 +637,7 @@ helm repo add windmill https://windmill-labs.github.io/windmill-helm-charts/
 
 - Deploy airflow
 ````bash
-helm install windmill-chart windmill/windmill --namespace=windmill --create-namespace
+helm install windmill windmill/windmill --namespace=windmill --create-namespace
 ````
 
 - Create a HTTPRoute for Windmill App Server
