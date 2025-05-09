@@ -1,0 +1,18 @@
+kind: HTTPRoute
+apiVersion: gateway.networking.k8s.io/v1
+metadata:
+  name: lakekeeper
+  namespace: lakekeeper
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: contour
+    namespace: projectcontour
+  hostnames:
+  - "lakekeeper.ganesh.algueron.io"
+  rules:
+  - backendRefs:
+    - kind: Service
+      name: ganesh-lakekeeper
+      port: 8181
