@@ -524,6 +524,16 @@ kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main
 kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/starrocks/starrocks-http-route.yaml
 ````
 
+- Expose the MySQL port through a NodePort service
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/starrocks/starrocks-mysql-service.yaml
+````
+
+- Connect using MySQL client and update root password
+````sql
+SET PASSWORD = PASSWORD('<password>')
+````
+
 ### Setup Airflow
 
 - Add the Airflow Helm chart repository
