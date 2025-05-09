@@ -524,30 +524,6 @@ kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main
 kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/starrocks/starrocks-http-route.yaml
 ````
 
-### Setup Airbyte
-
-- Create Airbyte namespace
-````bash
-kubectl create namespace airbyte
-````
-
-- Add the Airbyte Helm chart repository to Helm
-````bash
-helm repo add airbyte https://airbytehq.github.io/helm-charts
-````
-
-- Deploy Airbyte
-````bash
-helm install --namespace airbyte airbyte airbyte/airbyte
-````
-
-### Configure Airbyte reverse proxy
-
-- Create a HTTPRoute for Airbyte WebApp
-````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/airbyte/airbyte-http-route.yaml
-````
-
 ### Setup Airflow
 
 - Add the Airflow Helm chart repository
