@@ -418,91 +418,83 @@ mc admin info ganesh
 
 ## Ganesh services setup
 
-### Setup Hive Metastore
+### Setup Lakekeeper
 
-- Create Hive namespace
+- Create Lakekeeper namespace
 ````bash
-kubectl create namespace hive
+kubectl create namespace lakekeeper
 ````
 
-- Fill the necessary variables for PostgreSQL connection
+- Add the Lakekeeper Helm chart repository to Helm
 ````bash
-export POSTGRESQL_IP=192.168.0.xxx
-export HIVE_POSTGRESQL_DB=hive_db
-export HIVE_POSTGRESQL_USER=hive
-export HIVE_POSTGRESQL_PASSWORD=$(openssl rand -base64 18)
+helm repo add lakekeeper https://lakekeeper.github.io/lakekeeper-charts/
 ````
 
-- Download Hive database creation script
+- Generate a password for the database
 ````bash
-sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/hive/hive-db-creation.sql
+export LAKEKEEPER_DB_PASSWORD=$(openssl rand -base64 -hex 24)
 ````
 
-- Fill the database creation script
+- Download Lakekeeper database creation script
 ````bash
-sed -i -e "s/HIVE_POSTGRESQL_DB/$HIVE_POSTGRESQL_DB/g" hive-db-creation.sql
-sed -i -e "s/HIVE_POSTGRESQL_USER/$HIVE_POSTGRESQL_USER/g" hive-db-creation.sql
-sed -i -e "s/HIVE_POSTGRESQL_PASSWORD/$HIVE_POSTGRESQL_PASSWORD/g" hive-db-creation.sql
+sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/lakekeeper/lakekeeper-db-creation.sql
 ````
 
-- Create the Hive database and user
+- Generate a password for the database and fill the configuration files
 ````bash
-sudo su -c "psql -f hive-db-creation.sql" postgres
+sed -i -e "s/LAKEKEEPER_DB_PASSWORD/$LAKEKEEPER_DB_PASSWORD/g" lakekeeper-db-creation.sql
 ````
 
-- Download Hive secret for PostgreSQL
+- Create the Lakekeeper database and user
 ````bash
-sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/hive/hive-metastore-secret.yaml
+sudo su -c "psql -f lakekeeper-db-creation.sql" postgres
 ````
 
-- Generate Hive service options
+- Download Lakekeeper secret manifest
 ````bash
-export HIVE_METASTORE_SECRET=$(echo "-Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://$POSTGRESQL_IP:5432/$HIVE_POSTGRESQL_DB -Djavax.jdo.option.ConnectionUserName=$HIVE_POSTGRESQL_USER -Djavax.jdo.option.ConnectionPassword=$HIVE_POSTGRESQL_PASSWORD" | base64 --wrap=0)
+sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/lakekeeper/lakekeeper-postgresql-secret.yaml
 ````
 
-- Fill Hive secret manifest
+- Fill the credentials for PostgreSQL
 ````bash
-sed -i -e "s/HIVE_METASTORE_SECRET/$HIVE_METASTORE_SECRET/g" hive-metastore-secret.yaml
+export LAKEKEEPER_DB_USER=lakekeeper
+sed -i -e "s/LAKEKEEPER_DB_USER/$(echo -n $LAKEKEEPER_DB_USER | base64 | tr --delete '\n')/g" lakekeeper-postgresql-secret.yaml
+sed -i -e "s/LAKEKEEPER_DB_PASSWORD/$(echo -n $LAKEKEEPER_DB_PASSWORD | base64 | tr --delete '\n')/g" lakekeeper-postgresql-secret.yaml
 ````
 
-- Create Hive metastore secret for PostgreSQL
+- Create the secret for PostgreSQL credentials
 ````bash
-kubectl apply -f hive-metastore-secret.yaml
+kubectl apply -f lakekeeper-postgresql-secret.yaml
 ````
 
-- Create S3 user for Hive Metastore
+- Download Lakekeeper Helm values file
 ````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/hive/hive-metastore-s3-user.yaml
+sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/lakekeeper/lakekeeper-helm-values.yaml
 ````
 
-- Download Hive Metastore S3 configuration manifest
+- Fill the PostgreSQL host in the Helm values file
 ````bash
-wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/hive/hive-metastore-s3-config.yaml
+export LAKEKEEPER_DB_HOST=xxx.xxx.xxx.xxx  # Replace with your IP
+sed -i -e "s/LAKEKEEPER_DB_HOST/$LAKEKEEPER_DB_HOST/g" lakekeeper-helm-values.yaml
 ````
 
-- Fill Rook Access Key ID
+- Deploy Lakekeeper
 ````bash
-sed -i "s/ROOK_KEY_ID/`kubectl get secret rook-ceph-object-user-ceph-objectstore-hive-metastore -n rook-ceph -o jsonpath='{.data.AccessKey}' | base64 --decode`/" hive-metastore-s3-config.yaml
+helm install -f lakekeeper-helm-values.yaml --namespace lakekeeper ganesh-lakekeeper lakekeeper/lakekeeper
 ````
 
-- Fill Rook Secret Key
+- Create a HTTPRoute for Lakekeeper endpoint
 ````bash
-sed -i "s/ROOK_SECRET_KEY/`kubectl get secret rook-ceph-object-user-ceph-objectstore-hive-metastore -n rook-ceph -o jsonpath='{.data.SecretKey}' | base64 --decode`/" hive-metastore-s3-config.yaml
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/lakekeeper/lakekeeper-http-route.yaml
 ````
 
-- Create Hive Metastore secret for Rook
+- Bootstrap the server
 ````bash
-kubectl apply -f hive-metastore-s3-config.yaml
-````
-
-- Deploy Hive Metastore
-````bash
-kubectl apply -f hive-metastore-deployment.yaml
-````
-
-- Deploy Hive Service
-````bash
-kubectl apply -f hive-metastore-service.yaml
+curl --location 'https://lakekeeper.ganesh.algueron.io/management/v1/bootstrap' \
+--header 'Content-Type: application/json' \
+--data '{
+    "accept-terms-of-use": true
+}'
 ````
 
 ### Setup Trino
