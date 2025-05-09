@@ -497,41 +497,31 @@ curl --location 'https://lakekeeper.ganesh.algueron.io/management/v1/bootstrap' 
 }'
 ````
 
-### Setup Trino
+### Setup StarRocks
 
-- Create Trino namespace
+- Deploy StarRocks Custom Resource Definitions
 ````bash
-kubectl create namespace trino
+kubectl apply -f https://raw.githubusercontent.com/StarRocks/starrocks-kubernetes-operator/main/deploy/starrocks.com_starrocksclusters.yaml
 ````
 
-- Add the Trino Helm chart repository to Helm
+- Create StarRocks namespace
 ````bash
-helm repo add trino https://trinodb.github.io/charts
+kubectl create namespace starrocks
 ````
 
-- Download Trino configuration manifest for S3
+- Deploy StarRocks Operator
 ````bash
-wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/trino/trino-configuration.yaml
+kubectl apply -f https://raw.githubusercontent.com/StarRocks/starrocks-kubernetes-operator/main/deploy/operator.yaml
 ````
 
-- Fill Rook Access Key ID
+- Deploy StarRocks cluster
 ````bash
-sed -i "s/ROOK_KEY_ID/`kubectl get secret rook-ceph-object-user-ceph-objectstore-hive-metastore -n rook-ceph -o jsonpath='{.data.AccessKey}' | base64 --decode`/" trino-configuration.yaml
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/starrocks/starrocks-cluster.yaml
 ````
 
-- Fill Rook Secret Key
+- Create a HTTPRoute for StarRocks
 ````bash
-sed -i "s/ROOK_SECRET_KEY/`kubectl get secret rook-ceph-object-user-ceph-objectstore-hive-metastore -n rook-ceph -o jsonpath='{.data.SecretKey}' | base64 --decode`/" trino-configuration.yaml
-````
-
-- Create the Trino cluster
-````bash
-helm install -f trino-configuration.yaml --namespace trino ganesh-trino-cluster trino/trino
-````
-
-- Create a HTTPRoute for Trino Cluster UI
-````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/trino/trino-http-route.yaml
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/starrocks/starrocks-http-route.yaml
 ````
 
 ### Setup Airbyte
