@@ -103,7 +103,7 @@ sudo unzip /opt/keycloak.zip -d /opt/
 
 - Rename directory
 ````bash
-sudo mv /opt/keycloak-26.2.2 /opt/keycloak
+sudo mv /opt/keycloak-26.6.2 /opt/keycloak
 ````
 
 - Set ownership to Keycloak service account
@@ -321,99 +321,6 @@ kubectl -n rook-ceph get secret rook-ceph-dashboard-password -o jsonpath="{['dat
 - Set Rook Block storage as the default StorageClass
 ````bash
 kubectl patch storageclass rook-ceph-block -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
-````
-
-### Setup MinIO
-
-- Add the MinIO Operator Helm chart repository
-````bash
-helm repo add minio-operator https://operator.min.io
-````
-
-- Install the MinIO Operator
-````bash
-helm install --namespace minio-operator --create-namespace minio-operator minio-operator/operator
-````
-
-- Create the Tenant namespace
-````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-namespace.yaml
-````
-
-- Download the Secret file manifest
-````bash
-wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-storage-configuration.yaml
-````
-
-- Generate Root access and secret keys
-````bash
-export ROOT_ACCESS_KEY=$(openssl rand -base64 -hex 18)
-export ROOT_SECRET_KEY=$(openssl rand -base64 -hex 24)
-````
-
-- Fill the Tenant storage configuration manifest
-````bash
-sed -i -e "s/ROOT_ACCESS_KEY/$ROOT_ACCESS_KEY/g" minio-tenant-storage-configuration.yaml
-sed -i -e "s/ROOT_SECRET_KEY/$ROOT_SECRET_KEY/g" minio-tenant-storage-configuration.yaml
-````
-
-- Create the Tenant storage configuration
-````bash
-kubectl apply -f minio-tenant-storage-configuration.yaml
-````
-
-- Download the MinIO admin user manifest
-````bash
-wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-storage-user.yaml
-````
-
-- Generate admin access and secret keys
-````bash
-export MINIO_ADMIN_LOGIN=admin
-export MINIO_ADMIN_PASSWORD=$(openssl rand -base64 -hex 24)
-````
-
-- Fill the MinIO admin configuration manifest
-````bash
-sed -i -e "s/MINIO_ADMIN_LOGIN/$(echo -n $MINIO_ADMIN_LOGIN | base64 | tr --delete '\n')/g" minio-tenant-storage-user.yaml
-sed -i -e "s/MINIO_ADMIN_PASSWORD/$(echo -n $MINIO_ADMIN_PASSWORD | base64 | tr --delete '\n')/g" minio-tenant-storage-user.yaml
-````
-
-- Create the Tenant storage user
-````bash
-kubectl apply -f minio-tenant-storage-user.yaml
-````
-
-- Create the tenant
-````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant.yaml
-````
-
-- Create a HTTPRoute for MinIO console
-````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-console-http-route.yaml
-````
-
-- Create a HTTPRoute for MinIO S3 endpoint
-````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-s3-http-route.yaml
-````
-
-### MinIO Health check
-
-- Download MinIO client
-````bash
-wget https://dl.min.io/client/mc/release/windows-amd64/mc.exe
-````
-
-- Create an alias for the S3 service
-````bash
-mc alias set ganesh https://s3.ganesh.algueron.io $MINIO_ADMIN_LOGIN $MINIO_ADMIN_PASSWORD
-````
-
-- Test the connection to the S3 service
-````bash
-mc admin info ganesh
 ````
 
 ## Ganesh services setup
