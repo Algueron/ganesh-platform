@@ -93,7 +93,7 @@ sudo adduser keycloak
 
 - Download Keycloak
 ````bash
-sudo wget -O /opt/keycloak.zip https://github.com/keycloak/keycloak/releases/download/26.2.2/keycloak-26.2.2.zip
+sudo wget -O /opt/keycloak.zip https://github.com/keycloak/keycloak/releases/download/26.6.2/keycloak-26.6.2.zip
 ````
 
 - Extract Keycloak archive
