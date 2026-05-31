@@ -1,8 +1,8 @@
 kind: HTTPRoute
 apiVersion: gateway.networking.k8s.io/v1
 metadata:
-  name: airbyte-webapp
-  namespace: airbyte
+  name: starrocks-fe
+  namespace: starrocks
 spec:
   parentRefs:
   - group: gateway.networking.k8s.io
@@ -10,9 +10,9 @@ spec:
     name: contour
     namespace: projectcontour
   hostnames:
-  - "airbyte.ganesh.algueron.io"
+  - "starrocks.ganesh.algueron.io"
   rules:
   - backendRefs:
     - kind: Service
-      name: airbyte-airbyte-webapp-svc
-      port: 80
+      name: ganesh-cluster-fe-service
+      port: 8030

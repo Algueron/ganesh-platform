@@ -1,8 +1,8 @@
 kind: HTTPRoute
 apiVersion: gateway.networking.k8s.io/v1
 metadata:
-  name: argocd-server
-  namespace: argocd
+  name: minio-console
+  namespace: minio-tenant
 spec:
   parentRefs:
   - group: gateway.networking.k8s.io
@@ -10,13 +10,9 @@ spec:
     name: contour
     namespace: projectcontour
   hostnames:
-  - "argocd.ganesh.algueron.io"
+  - "minio.ganesh.algueron.io"
   rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    backendRefs:
+  - backendRefs:
     - kind: Service
-      name: argocd-server
-      port: 80
+      name: myminio-console
+      port: 9090

@@ -1,8 +1,8 @@
 kind: HTTPRoute
 apiVersion: gateway.networking.k8s.io/v1
 metadata:
-  name: datahub-gms
-  namespace: datahub
+  name: minio-s3
+  namespace: minio-tenant
 spec:
   parentRefs:
   - group: gateway.networking.k8s.io
@@ -10,9 +10,9 @@ spec:
     name: contour
     namespace: projectcontour
   hostnames:
-  - "datahub-gms.ganesh.algueron.io"
+  - "s3.ganesh.algueron.io"
   rules:
   - backendRefs:
     - kind: Service
-      name: datahub-datahub-gms
-      port: 8080
+      name: minio
+      port: 80

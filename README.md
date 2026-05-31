@@ -54,14 +54,14 @@ sudo apt install -y postgresql
 
 - Edit PostgreSQL configuration (set listen_addresses = '*')
 ````bash
-cat <<EOF  | sudo tee -a /etc/postgresql/16/main/postgresql.conf
+cat <<EOF  | sudo tee -a /etc/postgresql/17/main/postgresql.conf
 listen_addresses = '*'
 EOF
 ````
 
 - Edit PostgreSQL authentication file (temporarily allow all)
 ````bash
-cat <<EOF  | sudo tee -a /etc/postgresql/16/main/pg_hba.conf
+cat <<EOF  | sudo tee -a /etc/postgresql/17/main/pg_hba.conf
 # Allow Kerberos authentication
 host    all     all     0.0.0.0/0   md5
 EOF
@@ -74,7 +74,7 @@ sudo systemctl restart postgresql
 
 ### Setup Keycloak
 
-Keycloak will be used as the Identity Provider. It is currently installed on the same server than PostgreSQL.
+Keycloak will be used as the Identity Provider. It should be installed on a dedicated server.
 
 - Install system utilities
 ````bash
@@ -93,7 +93,7 @@ sudo adduser keycloak
 
 - Download Keycloak
 ````bash
-sudo wget -O /opt/keycloak.zip https://github.com/keycloak/keycloak/releases/download/25.0.0/keycloak-25.0.0.zip
+sudo wget -O /opt/keycloak.zip https://github.com/keycloak/keycloak/releases/download/26.2.2/keycloak-26.2.2.zip
 ````
 
 - Extract Keycloak archive
@@ -103,7 +103,7 @@ sudo unzip /opt/keycloak.zip -d /opt/
 
 - Rename directory
 ````bash
-sudo mv /opt/keycloak-25.0.0 /opt/keycloak
+sudo mv /opt/keycloak-26.2.2 /opt/keycloak
 ````
 
 - Set ownership to Keycloak service account
@@ -202,7 +202,7 @@ sudo systemctl enable --now keycloak
 
 - Create your admin user
 ````bash
-/opt/keycloak/bin/kcadm.sh create users -r ganesh -s username=algueron -s enabled=true
+/opt/keycloak/bin/kcadm.sh create users -r ganesh -s username=ganesh -s enabled=true
 ````
 
 - Set your password
@@ -219,6 +219,11 @@ Project Contour will be used as the Gateway API Provisioner.
 - Create the Gateway Provisioner
 ````bash
 kubectl apply -f https://projectcontour.io/quickstart/contour-gateway-provisioner.yaml
+````
+
+- Create the Contour configuration
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/contour/contour-deployment-config.yaml
 ````
 
 - Create the GatewayClass
@@ -308,11 +313,6 @@ helm install --create-namespace --namespace rook-ceph rook-ceph-cluster --set op
 kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-dashboard-http-route.yaml
 ````
 
-- Create a HTTPRoute for Ceph Object Store
-````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/rook/rook-object-store-http-route.yaml
-````
-
 - Retrieve the admin password
 ````bash
 kubectl -n rook-ceph get secret rook-ceph-dashboard-password -o jsonpath="{['data']['password']}" | base64 --decode && echo
@@ -323,30 +323,215 @@ kubectl -n rook-ceph get secret rook-ceph-dashboard-password -o jsonpath="{['dat
 kubectl patch storageclass rook-ceph-block -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 ````
 
+### Setup MinIO
+
+- Add the MinIO Operator Helm chart repository
+````bash
+helm repo add minio-operator https://operator.min.io
+````
+
+- Install the MinIO Operator
+````bash
+helm install --namespace minio-operator --create-namespace minio-operator minio-operator/operator
+````
+
+- Create the Tenant namespace
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-namespace.yaml
+````
+
+- Download the Secret file manifest
+````bash
+wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-storage-configuration.yaml
+````
+
+- Generate Root access and secret keys
+````bash
+export ROOT_ACCESS_KEY=$(openssl rand -base64 -hex 18)
+export ROOT_SECRET_KEY=$(openssl rand -base64 -hex 24)
+````
+
+- Fill the Tenant storage configuration manifest
+````bash
+sed -i -e "s/ROOT_ACCESS_KEY/$ROOT_ACCESS_KEY/g" minio-tenant-storage-configuration.yaml
+sed -i -e "s/ROOT_SECRET_KEY/$ROOT_SECRET_KEY/g" minio-tenant-storage-configuration.yaml
+````
+
+- Create the Tenant storage configuration
+````bash
+kubectl apply -f minio-tenant-storage-configuration.yaml
+````
+
+- Download the MinIO admin user manifest
+````bash
+wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-storage-user.yaml
+````
+
+- Generate admin access and secret keys
+````bash
+export MINIO_ADMIN_LOGIN=admin
+export MINIO_ADMIN_PASSWORD=$(openssl rand -base64 -hex 24)
+````
+
+- Fill the MinIO admin configuration manifest
+````bash
+sed -i -e "s/MINIO_ADMIN_LOGIN/$(echo -n $MINIO_ADMIN_LOGIN | base64 | tr --delete '\n')/g" minio-tenant-storage-user.yaml
+sed -i -e "s/MINIO_ADMIN_PASSWORD/$(echo -n $MINIO_ADMIN_PASSWORD | base64 | tr --delete '\n')/g" minio-tenant-storage-user.yaml
+````
+
+- Create the Tenant storage user
+````bash
+kubectl apply -f minio-tenant-storage-user.yaml
+````
+
+- Create the tenant
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant.yaml
+````
+
+- Create a HTTPRoute for MinIO console
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-console-http-route.yaml
+````
+
+- Create a HTTPRoute for MinIO S3 endpoint
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/minio/minio-tenant-s3-http-route.yaml
+````
+
+### MinIO Health check
+
+- Download MinIO client
+````bash
+wget https://dl.min.io/client/mc/release/windows-amd64/mc.exe
+````
+
+- Create an alias for the S3 service
+````bash
+mc alias set ganesh https://s3.ganesh.algueron.io $MINIO_ADMIN_LOGIN $MINIO_ADMIN_PASSWORD
+````
+
+- Test the connection to the S3 service
+````bash
+mc admin info ganesh
+````
+
 ## Ganesh services setup
 
-### Setup Airbyte
+### Setup Lakekeeper
 
-- Create Airbyte namespace
+- Create Lakekeeper namespace
 ````bash
-kubectl create namespace airbyte
+kubectl create namespace lakekeeper
 ````
 
-- Add the Airbyte Helm chart repository to Helm
+- Add the Lakekeeper Helm chart repository to Helm
 ````bash
-helm repo add airbyte https://airbytehq.github.io/helm-charts
+helm repo add lakekeeper https://lakekeeper.github.io/lakekeeper-charts/
 ````
 
-- Deploy Airbyte
+- Generate a password for the database
 ````bash
-helm install --namespace airbyte airbyte airbyte/airbyte
+export LAKEKEEPER_DB_PASSWORD=$(openssl rand -base64 -hex 24)
 ````
 
-### Configure Airbyte reverse proxy
-
-- Create a HTTPRoute for Airbyte WebApp
+- Download Lakekeeper database creation script
 ````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/airbyte/airbyte-http-route.yaml
+sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/lakekeeper/lakekeeper-db-creation.sql
+````
+
+- Generate a password for the database and fill the configuration files
+````bash
+sed -i -e "s/LAKEKEEPER_DB_PASSWORD/$LAKEKEEPER_DB_PASSWORD/g" lakekeeper-db-creation.sql
+````
+
+- Create the Lakekeeper database and user
+````bash
+sudo su -c "psql -f lakekeeper-db-creation.sql" postgres
+````
+
+- Download Lakekeeper secret manifest
+````bash
+sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/lakekeeper/lakekeeper-postgresql-secret.yaml
+````
+
+- Fill the credentials for PostgreSQL
+````bash
+export LAKEKEEPER_DB_USER=lakekeeper
+sed -i -e "s/LAKEKEEPER_DB_USER/$(echo -n $LAKEKEEPER_DB_USER | base64 | tr --delete '\n')/g" lakekeeper-postgresql-secret.yaml
+sed -i -e "s/LAKEKEEPER_DB_PASSWORD/$(echo -n $LAKEKEEPER_DB_PASSWORD | base64 | tr --delete '\n')/g" lakekeeper-postgresql-secret.yaml
+````
+
+- Create the secret for PostgreSQL credentials
+````bash
+kubectl apply -f lakekeeper-postgresql-secret.yaml
+````
+
+- Download Lakekeeper Helm values file
+````bash
+sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/lakekeeper/lakekeeper-helm-values.yaml
+````
+
+- Fill the PostgreSQL host in the Helm values file
+````bash
+export LAKEKEEPER_DB_HOST=xxx.xxx.xxx.xxx  # Replace with your IP
+sed -i -e "s/LAKEKEEPER_DB_HOST/$LAKEKEEPER_DB_HOST/g" lakekeeper-helm-values.yaml
+````
+
+- Deploy Lakekeeper
+````bash
+helm install -f lakekeeper-helm-values.yaml --namespace lakekeeper ganesh-lakekeeper lakekeeper/lakekeeper
+````
+
+- Create a HTTPRoute for Lakekeeper endpoint
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/lakekeeper/lakekeeper-http-route.yaml
+````
+
+- Bootstrap the server
+````bash
+curl --location 'https://lakekeeper.ganesh.algueron.io/management/v1/bootstrap' \
+--header 'Content-Type: application/json' \
+--data '{
+    "accept-terms-of-use": true
+}'
+````
+
+### Setup StarRocks
+
+- Deploy StarRocks Custom Resource Definitions
+````bash
+kubectl apply -f https://raw.githubusercontent.com/StarRocks/starrocks-kubernetes-operator/main/deploy/starrocks.com_starrocksclusters.yaml
+````
+
+- Create StarRocks namespace
+````bash
+kubectl create namespace starrocks
+````
+
+- Deploy StarRocks Operator
+````bash
+kubectl apply -f https://raw.githubusercontent.com/StarRocks/starrocks-kubernetes-operator/main/deploy/operator.yaml
+````
+
+- Deploy StarRocks cluster
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/starrocks/starrocks-cluster.yaml
+````
+
+- Create a HTTPRoute for StarRocks
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/starrocks/starrocks-http-route.yaml
+````
+
+- Expose the MySQL port through a NodePort service
+````bash
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/starrocks/starrocks-mysql-service.yaml
+````
+
+- Connect using MySQL client and update root password
+````sql
+SET PASSWORD = PASSWORD('<password>')
 ````
 
 ### Setup Airflow
@@ -411,73 +596,19 @@ kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main
 
 - Connect and change the admin password to something secure
 
-### Setup DataHub
+### Setup Windmill
 
-- Create DataHub namespace
+- Add the Airflow Helm chart repository
 ````bash
-kubectl create namespace datahub
+helm repo add windmill https://windmill-labs.github.io/windmill-helm-charts/
 ````
 
-- Add the DataHub Helm chart repository
+- Deploy airflow
 ````bash
-helm repo add datahub https://helm.datahubproject.io/
+helm install windmill windmill/windmill --namespace=windmill --create-namespace
 ````
 
-- Install DataHub Prerequisites (Kafka and Elasticsearch)
+- Create a HTTPRoute for Windmill App Server
 ````bash
-helm install prerequisites datahub/datahub-prerequisites --namespace datahub --values https://raw.githubusercontent.com/Algueron/ganesh-platform/main/datahub/datahub-prerequisites-helm-values.yaml
-````
-
-- Download DataHub database creation script
-````bash
-sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/datahub/datahub-db-creation.sql
-````
-
-- Download DataHub Helm values file
-````bash
-sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/datahub/datahub-helm-values.yaml
-````
-
-- Generate a password for the database and fill the configuration files
-````bash
-export DATAHUB_DB_PASSWORD=$(openssl rand -base64 18)
-sed -i -e "s/DATAHUB_DB_PASSWORD/$DATAHUB_DB_PASSWORD/g" datahub-db-creation.sql
-sed -i -e "s/DATAHUB_DB_PASSWORD/$DATAHUB_DB_PASSWORD/g" datahub-helm-values.yaml
-````
-
-- Create the DataHub database and user
-````bash
-sudo su -c "psql -f datahub-db-creation.sql" postgres
-````
-
-- Fill the PostgreSQL host in the Helm values file
-````bash
-export DATAHUB_DB_HOST=xxx.xxx.xxx.xxx  # Replace with your IP
-sed -i -e "s/DATAHUB_DB_HOST/$DATAHUB_DB_HOST/g" datahub-helm-values.yaml
-````
-
-- Download the users file
-````bash
-sudo wget https://raw.githubusercontent.com/Algueron/ganesh-platform/main/datahub/user.props
-````
-
-- Generate an admin password
-````bash
-export DATAHUB_ADMIN_PASSWORD=$(openssl rand -base64 18)
-sed -i -e "s/DATAHUB_ADMIN_PASSWORD/$DATAHUB_ADMIN_PASSWORD/g" user.props
-````
-
-- Create a secret to store the users file
-````bash
-kubectl create secret generic datahub-users-secret -n datahub --from-file=user.props=./user.props
-````
-
-- Deploy DataHub
-````bash
-helm install datahub datahub/datahub --namespace datahub --values datahub-helm-values.yaml --timeout 20m
-````
-
-- Create a HTTPRoute for DataHub frontend
-````bash
-kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/datahub/datahub-http-route.yaml
+kubectl apply -f https://raw.githubusercontent.com/Algueron/ganesh-platform/main/windmill/windmill-http-route.yaml
 ````

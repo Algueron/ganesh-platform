@@ -1,10 +1,8 @@
 kind: HTTPRoute
 apiVersion: gateway.networking.k8s.io/v1
 metadata:
-  name: rook-ceph-object-store
-  namespace: rook-ceph
-  labels:
-    app: rook
+  name: windmill-app
+  namespace: windmill
 spec:
   parentRefs:
   - group: gateway.networking.k8s.io
@@ -12,9 +10,13 @@ spec:
     name: contour
     namespace: projectcontour
   hostnames:
-  - "s3a.ganesh.algueron.io"
+  - "windmill.ganesh.algueron.io"
   rules:
-  - backendRefs:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
     - kind: Service
-      name: rook-ceph-rgw-ceph-objectstore
-      port: 80
+      name: windmill-app
+      port: 8000

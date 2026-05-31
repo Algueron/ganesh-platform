@@ -4,10 +4,10 @@
 
 image:
   # -- Image
-  repository: rook/ceph
+  repository: docker.io/rook/ceph
   # -- Image tag
   # @default -- `master`
-  tag: v1.14.8
+  tag: v1.17.1
   # -- Image pull policy
   pullPolicy: IfNotPresent
 
@@ -43,6 +43,9 @@ unreachableNodeTolerationSeconds: 5
 
 # -- Whether the operator should watch cluster CRD in its own namespace or not
 currentNamespaceOnly: false
+
+# -- Custom pod labels for the operator
+operatorPodLabels: {}
 
 # -- Pod annotations
 annotations: {}
@@ -88,10 +91,6 @@ csi:
   # in some network configurations where the SDN does not provide access to an external cluster or
   # there is significant drop in read/write performance
   enableCSIHostNetwork: true
-  # -- Deprecation note: Rook uses "holder" pods to allow CSI to connect to the multus public network
-  # without needing hosts to the network. Holder pods are being removed. See issue for details:
-  # https://github.com/rook/rook/issues/13055. New Rook deployments should set this to "true".
-  disableHolderPods: true
   # -- Enable Snapshotter in CephFS provisioner pod
   enableCephfsSnapshotter: true
   # -- Enable Snapshotter in NFS provisioner pod
@@ -182,9 +181,6 @@ csi:
 
   # -- Set GRPC timeout for csi containers (in seconds). It should be >= 120. If this value is not set or is invalid, it defaults to 150
   grpcTimeoutInSeconds: 150
-
-  # -- Allow starting an unsupported ceph-csi image
-  allowUnsupportedVersion: false
 
   # -- Burst to use while communicating with the kubernetes apiserver.
   kubeApiBurst:
@@ -447,6 +443,12 @@ csi:
   # -- CSI Addons server port
   # @default -- `9070`
   csiAddonsPort:
+  # -- CSI Addons server port for the RBD provisioner
+  # @default -- `9070`
+  csiAddonsRBDProvisionerPort:
+  # -- CSI Addons server port for the Ceph FS provisioner
+  # @default -- `9070`
+  csiAddonsCephFSProvisionerPort:
 
   # -- Enable Ceph Kernel clients on kernel < 4.17. If your kernel does not support quotas for CephFS
   # you may want to disable this setting. However, this will cause an issue during upgrades
@@ -487,37 +489,37 @@ csi:
     # -- Ceph CSI image repository
     repository: quay.io/cephcsi/cephcsi
     # -- Ceph CSI image tag
-    tag: v3.11.0
+    tag: v3.14.0
 
   registrar:
     # -- Kubernetes CSI registrar image repository
     repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
     # -- Registrar image tag
-    tag: v2.10.1
+    tag: v2.13.0
 
   provisioner:
     # -- Kubernetes CSI provisioner image repository
     repository: registry.k8s.io/sig-storage/csi-provisioner
     # -- Provisioner image tag
-    tag: v4.0.1
+    tag: v5.1.0
 
   snapshotter:
     # -- Kubernetes CSI snapshotter image repository
     repository: registry.k8s.io/sig-storage/csi-snapshotter
     # -- Snapshotter image tag
-    tag: v7.0.2
+    tag: v8.2.0
 
   attacher:
     # -- Kubernetes CSI Attacher image repository
     repository: registry.k8s.io/sig-storage/csi-attacher
     # -- Attacher image tag
-    tag: v4.5.1
+    tag: v4.8.0
 
   resizer:
     # -- Kubernetes CSI resizer image repository
     repository: registry.k8s.io/sig-storage/csi-resizer
     # -- Resizer image tag
-    tag: v1.10.1
+    tag: v1.13.1
 
   # -- Image pull policy
   imagePullPolicy: IfNotPresent
@@ -537,7 +539,7 @@ csi:
     # -- CSIAddons sidecar image repository
     repository: quay.io/csiaddons/k8s-sidecar
     # -- CSIAddons sidecar image tag
-    tag: v0.8.0
+    tag: v0.12.0
 
   nfs:
     # -- Enable the nfs csi driver
@@ -630,11 +632,20 @@ discover:
   #       cpu: 100m
   #       memory: 128Mi
 
+# -- Custom label to identify node hostname. If not set `kubernetes.io/hostname` will be used
+customHostnameLabel:
+
 # -- Runs Ceph Pods as privileged to be able to write to `hostPaths` in OpenShift with SELinux restrictions.
 hostpathRequiresPrivileged: false
 
+# -- Whether to create all Rook pods to run on the host network, for example in environments where a CNI is not enabled
+enforceHostNetwork: false
+
 # -- Disable automatic orchestration when new devices are discovered.
 disableDeviceHotplug: false
+
+# -- The revision history limit for all pods created by Rook. If blank, the K8s default is 10.
+revisionHistoryLimit:
 
 # -- Blacklist certain disks according to the regex provided.
 discoverDaemonUdev:
@@ -650,7 +661,15 @@ enableOBCWatchOperatorNamespace: true
 # @default -- `ceph cluster namespace`
 obcProvisionerNamePrefix:
 
+# -- Many OBC additional config fields may be risky for administrators to allow users control over.
+# The safe and default-allowed fields are 'maxObjects' and 'maxSize'.
+# Other fields should be considered risky. To allow all additional configs, use this value:
+#   "maxObjects,maxSize,bucketMaxObjects,bucketMaxSize,bucketPolicy,bucketLifecycle,bucketOwner"
+# @default -- "maxObjects,maxSize"
+obcAllowAdditionalConfigFields: "maxObjects,maxSize"
+
 monitoring:
   # -- Enable monitoring. Requires Prometheus to be pre-installed.
   # Enabling will also create RBAC rules to allow Operator to create ServiceMonitors
   enabled: false
+  
